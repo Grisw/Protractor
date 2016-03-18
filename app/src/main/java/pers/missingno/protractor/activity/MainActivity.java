@@ -1,12 +1,7 @@
-package pers.missingno.protractor;
+package pers.missingno.protractor.activity;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.PixelFormat;
-import android.graphics.PorterDuff;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -19,30 +14,27 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Size;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.Surface;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.TextureView;
 import android.view.View;
 import android.view.WindowManager;
 
-import java.text.DecimalFormat;
 import java.util.Arrays;
+
+import pers.missingno.protractor.R;
+import pers.missingno.protractor.view.ProtractorView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private CameraManager camera;
     private CameraDevice device;
     private CameraCaptureSession session;
-    private Size previewSize;
+    private TextureView preview;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,23 +52,59 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        final SurfaceView ruler= (SurfaceView) findViewById(R.id.ruler);
+        ProtractorView ruler= (ProtractorView) findViewById(R.id.ruler);
         ruler.setZOrderOnTop(true);
 
-        final SurfaceHolder holder=ruler.getHolder();
-        holder.setFormat(PixelFormat.TRANSPARENT);
+        preview = (TextureView) findViewById(R.id.preview);
 
-        camera = (CameraManager) getSystemService(CAMERA_SERVICE);
+        initCamera();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if(keyCode==KeyEvent.KEYCODE_BACK){
+            if(device!=null)
+                device.close();
+            if(session!=null)
+                session.close();
+            finish();
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    private void initCamera(){
+        final CameraManager cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
         CameraCharacteristics characteristics = null;
         try {
-            characteristics = camera.getCameraCharacteristics(CameraCharacteristics.LENS_FACING_FRONT + "");
+            characteristics = cameraManager.getCameraCharacteristics(CameraCharacteristics.LENS_FACING_FRONT + "");
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
         StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-        previewSize = map.getOutputSizes(SurfaceTexture.class)[0];
+        final Size previewSize = map.getOutputSizes(SurfaceTexture.class)[0];
 
-        final TextureView preview = (TextureView) findViewById(R.id.preview);
         preview.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override
             public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
@@ -94,10 +122,10 @@ public class MainActivity extends AppCompatActivity {
                         // for ActivityCompat#requestPermissions for more details.
                         return;
                     }
-                    camera.openCamera(CameraCharacteristics.LENS_FACING_FRONT + "", new CameraDevice.StateCallback() {
+                    cameraManager.openCamera(CameraCharacteristics.LENS_FACING_FRONT + "", new CameraDevice.StateCallback() {
                         @Override
                         public void onOpened(CameraDevice camera) {
-                            device=camera;
+                            device = camera;
                             try {
                                 final CaptureRequest.Builder builder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
                                 SurfaceTexture texture = preview.getSurfaceTexture();
@@ -107,9 +135,9 @@ public class MainActivity extends AppCompatActivity {
                                 camera.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
                                     @Override
                                     public void onConfigured(CameraCaptureSession session) {
-                                        MainActivity.this.session=session;
+                                        MainActivity.this.session = session;
                                         try {
-                                            session.setRepeatingRequest(builder.build(),null,handler);
+                                            session.setRepeatingRequest(builder.build(), null, handler);
                                         } catch (CameraAccessException e) {
                                             e.printStackTrace();
                                             session.close();
@@ -120,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
                                     public void onConfigureFailed(CameraCaptureSession session) {
 
                                     }
-                                },handler);
+                                }, handler);
                             } catch (CameraAccessException e) {
                                 e.printStackTrace();
                             }
@@ -156,102 +184,5 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-
-        preview.setOnTouchListener(new View.OnTouchListener() {
-
-            private float x,y;
-
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if(event.getAction()==MotionEvent.ACTION_MOVE){
-                    x=event.getX();
-                    y=event.getY();
-                    Canvas canvas=holder.lockCanvas();
-                    canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-                    Paint p = new Paint();
-                    p.setColor(Color.RED);
-                    p.setStrokeWidth(10);
-                    p.setTextSize(40);
-                    canvas.drawLine(100, 50, 100, preview.getHeight() - 50, p);
-                    canvas.drawLine(100, (preview.getHeight()-100)/2+50,50,(preview.getHeight()-100)/2+50,p);
-                    if(x>=100){
-                        canvas.drawLine(100, (preview.getHeight() - 100) / 2 + 50, x, y, p);
-                        double d=Math.toDegrees(Math.atan((x-100)/(y-(preview.getHeight()-100)/2-50)));
-                        if(d<0){
-                            d=180+d;
-                        }
-                        DecimalFormat format=new DecimalFormat("0.##");
-                        String left=format.format(180-d);
-                        String right=format.format(d);
-                        drawText(canvas, left, (float) ((x + 100)/2+50*Math.cos(Math.toRadians(d))), (float) ((y +(preview.getHeight() - 100) / 2 + 50)/2-50*Math.sin(Math.toRadians(d))), p,  (float) (90 - d));
-                        drawText(canvas, right, (float) ((x + 100)/2-80*Math.cos(Math.toRadians(d))), (float) ((y +(preview.getHeight() - 100) / 2 + 50)/2+80*Math.sin(Math.toRadians(d))), p, (float) (90 - d));
-                    }
-                    holder.unlockCanvasAndPost(canvas);
-                }
-                return true;
-            }
-        });
-
-        new Thread(){
-            public void run(){
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                Canvas canvas=holder.lockCanvas();
-                Paint p = new Paint();
-                p.setColor(Color.RED);
-                p.setStrokeWidth(10);
-                canvas.drawLine(100, 50, 100, preview.getHeight() - 50, p);
-                canvas.drawLine(100,(preview.getHeight()-100)/2+50,50,(preview.getHeight()-100)/2+50,p);
-                holder.unlockCanvasAndPost(canvas);
-            }
-        }.start();
-    }
-
-    public void drawText(Canvas canvas ,String text , float x ,float y,Paint paint ,float angle){
-        if(angle != 0){
-            canvas.rotate(angle, x, y);
-        }
-        canvas.drawText(text, x, y, paint);
-        if(angle != 0){
-            canvas.rotate(-angle, x, y);
-        }
-    }
-
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if(keyCode==KeyEvent.KEYCODE_BACK){
-            if(device!=null)
-                device.close();
-            if(session!=null)
-                session.close();
-            finish();
-        }
-        return super.onKeyDown(keyCode, event);
     }
 }
