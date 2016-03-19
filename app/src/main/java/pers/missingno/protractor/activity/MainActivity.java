@@ -33,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
     private CameraDevice device;
     private CameraCaptureSession session;
     private TextureView preview;
+    private ProtractorView ruler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
 
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
-        ProtractorView ruler= (ProtractorView) findViewById(R.id.ruler);
+        ruler= (ProtractorView) findViewById(R.id.ruler);
         ruler.setZOrderOnTop(true);
 
         preview = (TextureView) findViewById(R.id.preview);
@@ -92,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-        final Size previewSize = map.getOutputSizes(SurfaceTexture.class)[0];
+        final Size previewSize=map.getOutputSizes(SurfaceTexture.class)[0];
 
         preview.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override
