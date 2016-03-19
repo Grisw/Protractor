@@ -6,10 +6,12 @@
     android:layout_height="match_parent"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     tools:context=".activity.MainActivity"
+    android:background="@android:color/black"
     tools:showIn="@layout/activity_main">
 
-    <TextureView
+    <pers.missingno.protractor.view.AutoFitTextureView
         android:id="@+id/preview"
+        android:layout_centerVertical="true"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@android:color/white"/>
